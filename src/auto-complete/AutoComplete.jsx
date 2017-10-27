@@ -25,10 +25,13 @@ type Props = {
   triggerOnFocus: boolean,
   fetchSuggestions: Function,
   onSelect: Function,
+  onChange: Function,
   onIconClick: Function,
   icon: Element | string,
   append: Element,
   prepend: Element,
+  onFocus: Function,
+  onBlur: Function
 }
 
 type AutoCompleteDefaultProps = {
@@ -95,27 +98,24 @@ class AutoComplete extends Component {
       this.setState({ suggestions: [] }); return;
     }
 
+    if (this.props.onChange) {
+      this.props.onChange(value);
+    }
+
     this.getData(value);
   }
 
-  handleFocus(): void {
+  handleFocus(e): void {
     this.setState({ isFocus: true });
-
+    if (this.props.onFocus) this.props.onFocus(e);
     if (this.props.triggerOnFocus) {
       this.getData(this.state.inputValue);
     }
   }
 
-  handleBlur(): void {
-    // 因为 blur 事件处理优先于 select 事件执行
-    setTimeout(() => {
-      this.setState({ isFocus: false });
-    }, 100);
-  }
-
-  handleKeyEnter(): void {
-    if (this.suggestionVisible() && this.state.highlightedIndex >= 0 && this.state.highlightedIndex < this.state.suggestions.length) {
-      this.select(this.state.suggestions[this.state.highlightedIndex]);
+  handleKeyEnter(highlightedIndex: number): void {
+    if (this.suggestionVisible() && highlightedIndex >= 0 && highlightedIndex < this.state.suggestions.length) {
+      this.select(this.state.suggestions[highlightedIndex]);
     }
   }
 
@@ -209,7 +209,7 @@ class AutoComplete extends Component {
           onIconClick={onIconClick}
           onChange={this.handleChange.bind(this)}
           onFocus={this.handleFocus.bind(this)}
-          onBlur={this.handleBlur.bind(this)}
+          onBlur={this.props.onBlur}
           onKeyDown={this.onKeyDown.bind(this)}
         />
         <Suggestions

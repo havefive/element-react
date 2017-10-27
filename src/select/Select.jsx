@@ -130,6 +130,10 @@ class Select extends Component {
     }
 
     if (state.visible != this.state.visible) {
+      if (this.props.onVisibleChange) {
+        this.props.onVisibleChange(state.visible);
+      }
+
       this.onVisibleChange(state.visible);
     }
 
@@ -145,33 +149,11 @@ class Select extends Component {
   }
 
   componentDidUpdate() {
-    const { visible } = this.state;
-
-    if (visible) {
-      if (this.popperJS) {
-        this.popperJS.update();
-      } else {
-        this.popperJS = new Popper(this.reference, this.popper, {
-          gpuAcceleration: false
-        });
-      }
-    } else {
-      if (this.popperJS) {
-        this.popperJS.destroy();
-      }
-
-      delete this.popperJS;
-    }
-
     this.state.inputWidth = this.reference.getBoundingClientRect().width;
   }
 
   componentWillUnmount() {
     removeResizeListener(this.refs.root, this.resetInputWidth.bind(this));
-
-    if (this.popperJS) {
-      this.popperJS.destroy();
-    }
   }
 
   debounce(): number {
@@ -185,16 +167,16 @@ class Select extends Component {
   }
 
   handleValueChange() {
-    const { remote, multiple } = this.props;
+    const { multiple } = this.props;
     const { value, options } = this.state;
 
-    if (remote && multiple && Array.isArray(value)) {
+    if (multiple && Array.isArray(value)) {
       this.setState({
         selected: options.reduce((prev, curr) => {
           return value.indexOf(curr.props.value) > -1 ? prev.concat(curr) : prev;
         }, [])
       }, () => {
-        this.resetInputHeight();
+        this.onSelectedChange(this.state.selected, false);
       });
     } else {
       const selected = options.filter(option => {
@@ -202,7 +184,7 @@ class Select extends Component {
        })[0];
 
        if (selected) {
-         this.state.selectedLabel = selected.props.label;
+         this.state.selectedLabel = selected.props.label || selected.props.value;
        }
     }
   }
@@ -236,8 +218,12 @@ class Select extends Component {
           bottomOverflowBeforeHidden = element.getBoundingClientRect().bottom - this.popper.getBoundingClientRect().bottom;
         }
 
-        if (selected && selected.props.value) {
-          selectedLabel = selected.currentLabel();
+        if (selected && selected.props) {
+          if (selected.props.value) {
+            selectedLabel = selected.currentLabel();
+          }
+        } else if (filterable) {
+          selectedLabel = '';
         }
 
         this.setState({ bottomOverflowBeforeHidden, selectedLabel });
@@ -263,6 +249,8 @@ class Select extends Component {
         if (multiple) {
           this.refs.input.focus();
         } else {
+          this.refs.reference.focus();
+
           // this.broadcast('input', 'inputSelect');
         }
       }
@@ -284,7 +272,16 @@ class Select extends Component {
 
   onValueChange(val: mixed) {
     const { multiple } = this.props;
-    let { options, valueChangeBySelected, selectedInit, selected, selectedLabel, currentPlaceholder, cachedPlaceHolder } = this.state;
+
+    let {
+      options,
+      valueChangeBySelected,
+      selectedInit,
+      selected,
+      selectedLabel,
+      currentPlaceholder,
+      cachedPlaceHolder
+    } = this.state;
 
     if (valueChangeBySelected) {
       return this.setState({
@@ -300,7 +297,7 @@ class Select extends Component {
       currentPlaceholder = cachedPlaceHolder;
 
       val.forEach(item => {
-        let option = this.options.filter(option => option.props.value === item)[0];
+        let option = options.filter(option => option.props.value === item)[0];
         if (option) {
           this.addOptionToValue(option);
         }
@@ -323,7 +320,8 @@ class Select extends Component {
     });
   }
 
-  onSelectedChange(val: any) {
+  onSelectedChange(val: any, bubble: boolean = true) {
+    const { form } = this.context;
     const { multiple, filterable, onChange } = this.props;
     let { query, hoverIndex, inputLength, selectedInit, currentPlaceholder, cachedPlaceHolder, valueChangeBySelected } = this.state;
 
@@ -340,7 +338,10 @@ class Select extends Component {
 
       valueChangeBySelected = true;
 
-      onChange && onChange(val.map(item => item.props.value));
+      if (bubble) {
+        onChange && onChange(val.map(item => item.props.value), val);
+        form && form.onFieldChange();
+      }
 
       // this.dispatch('form-item', 'el.form.change', val);
 
@@ -364,7 +365,10 @@ class Select extends Component {
         });
       }
 
-      onChange && onChange(val.props.value);
+      if (bubble) {
+        onChange && onChange(val.props.value, val);
+        form && form.onFieldChange();
+      }
     }
   }
 
@@ -402,6 +406,16 @@ class Select extends Component {
     }
 
     this.setState({ hoverIndex, voidRemoteQuery });
+  }
+
+  onEnter(): void {
+    this.popperJS = new Popper(this.reference, this.popper, {
+      gpuAcceleration: false
+    });
+  }
+
+  onAfterLeave(): void {
+    this.popperJS.destroy();
   }
 
   optionsAllDisabled(options: []): boolean {
@@ -536,6 +550,12 @@ class Select extends Component {
     });
   }
 
+  resetInputWidth() {
+    this.setState({
+      inputWidth: this.reference.getBoundingClientRect().width
+    })
+  }
+
   resetInputHeight() {
     let inputChildNodes = this.reference.childNodes;
     let input = [].filter.call(inputChildNodes, item => item.tagName === 'INPUT')[0];
@@ -657,26 +677,47 @@ class Select extends Component {
   deleteSelected(e: Object) {
     e.stopPropagation();
 
-    this.setState({
-      selected: {},
-      selectedLabel: '',
-      visible: false
-    });
+    if (this.state.selectedLabel != '') {
+      this.setState({
+        selected: {},
+        selectedLabel: '',
+        visible: false
+      });
 
-    if (this.props.onChange) {
-      this.props.onChange('');
+      this.context.form && this.context.form.onFieldChange();
+
+      if (this.props.onChange) {
+        this.props.onChange('');
+      }
+
+      if (this.props.onClear) {
+        this.props.onClear();
+      }
     }
   }
 
   deleteTag(tag: any) {
-    let selected = this.state.selected.slice(0);
-    let index = selected.indexOf(tag);
+    const index = this.state.selected.indexOf(tag);
 
-    if (index > -1) {
+    if (index > -1 && !this.props.disabled) {
+      const selected = this.state.selected.slice(0);
+
       selected.splice(index, 1);
-    }
 
-    this.setState({ selected });
+      this.setState({ selected }, () => {
+        if (this.props.onRemoveTag) {
+          this.props.onRemoveTag(tag.props.value);
+        }
+      });
+    }
+  }
+
+  handleIconClick(event) {
+    if (this.iconClass().indexOf('circle-close') > -1) {
+      this.deleteSelected(event);
+    } else {
+      this.toggleMenu();
+    }
   }
 
   onInputChange() {
@@ -692,26 +733,28 @@ class Select extends Component {
     this.state.optionsCount++;
     this.state.filteredOptionsCount++;
 
-    this.setState(this.state);
+    this.forceUpdate();
+    this.handleValueChange();
   }
 
   onOptionDestroy(option: any) {
     this.state.optionsCount--;
     this.state.filteredOptionsCount--;
 
-    let index = this.state.options.indexOf(option);
+    const index = this.state.options.indexOf(option);
 
     if (index > -1) {
       this.state.options.splice(index, 1);
     }
 
-    this.setState(this.state, () => {
-      this.state.options.forEach(el => {
-        if (el != option) {
-          el.resetIndex();
-        }
-      });
+    this.state.options.forEach(el => {
+      if (el != option) {
+        el.resetIndex();
+      }
     });
+
+    this.forceUpdate();
+    this.handleValueChange();
   }
 
   onOptionClick(option: any) {
@@ -749,6 +792,16 @@ class Select extends Component {
     });
   }
 
+  onMouseDown(event) {
+    event.preventDefault();
+
+    if (this.refs.input) {
+      this.refs.input.focus();
+    }
+
+    this.toggleMenu();
+  }
+
   onMouseEnter() {
     this.setState({
       inputHovering: true
@@ -761,25 +814,16 @@ class Select extends Component {
     })
   }
 
-  resetInputWidth() {
-    this.setState({
-      inputWidth: this.reference.getBoundingClientRect().width
-    })
-  }
-
   render() {
     const { multiple, size, disabled, filterable, loading } = this.props;
     const { selected, inputWidth, inputLength, query, selectedLabel, visible, options, filteredOptionsCount, currentPlaceholder } = this.state;
 
     return (
-      <div ref="root" style={this.style()} className={this.className('el-select', {
-          'is-multiple': multiple,
-          'is-small': size === 'small'
-        })}>
+      <div ref="root" style={this.style()} className={this.className('el-select')}>
         {
           multiple && (
             <div ref="tags" className="el-select__tags" onClick={this.toggleMenu.bind(this)} style={{
-              maxWidth: inputWidth - 32 + 'px'
+              maxWidth: inputWidth - 32
             }}>
               {
                 selected.map(el => {
@@ -788,10 +832,12 @@ class Select extends Component {
                       type="primary"
                       key={el.props.value}
                       hit={el.hitState}
-                      closable={true}
+                      closable={!disabled}
                       closeTransition={true}
                       onClose={this.deleteTag.bind(this, el)}
-                    >{el.currentLabel()}</Tag>
+                    >
+                      <span className="el-select__tags-text">{el.currentLabel()}</span>
+                    </Tag>
                   )
                 })
               }
@@ -800,21 +846,11 @@ class Select extends Component {
                   <input
                     ref="input"
                     type="text"
-                    className="el-select__input"
+                    className={this.classNames('el-select__input', size && `is-${size}`)}
                     style={{ width: inputLength, maxWidth: inputWidth - 42 }}
+                    disabled={disabled}
                     defaultValue={query}
                     onKeyUp={this.managePlaceholder.bind(this)}
-                    onChange={e => {
-                      clearTimeout(this.timeout);
-
-                      this.timeout = setTimeout(() => {
-                        this.setState({
-                          query: this.state.value
-                        });
-                      }, this.debounce());
-
-                      this.state.value = e.target.value;
-                    }}
                     onKeyDown={e => {
                       this.resetInputState(e);
 
@@ -838,6 +874,17 @@ class Select extends Component {
                           break;
                       }
                     }}
+                    onChange={e => {
+                      clearTimeout(this.timeout);
+
+                      this.timeout = setTimeout(() => {
+                        this.setState({
+                          query: this.state.value
+                        });
+                      }, this.debounce());
+
+                      this.state.value = e.target.value;
+                    }}
                   />
                 )
               }
@@ -850,12 +897,13 @@ class Select extends Component {
           type="text"
           placeholder={currentPlaceholder}
           name="name"
+          size={size}
           disabled={disabled}
           readOnly={!filterable || multiple}
-          icon={this.iconClass()}
+          icon={this.iconClass() || undefined}
           onChange={value => this.setState({ selectedLabel: value })}
-          onClick={this.toggleMenu.bind(this)}
-          onIconClick={this.toggleMenu.bind(this)}
+          onIconClick={this.handleIconClick.bind(this)}
+          onMouseDown={this.onMouseDown.bind(this)}
           onMouseEnter={this.onMouseEnter.bind(this)}
           onMouseLeave={this.onMouseLeave.bind(this)}
           onKeyUp={this.debouncedOnInputChange.bind(this)}
@@ -879,7 +927,7 @@ class Select extends Component {
             }
           }}
         />
-        <Transition name="md-fade-bottom" duration="200">
+        <Transition name="el-zoom-in-top" onEnter={this.onEnter.bind(this)} onAfterLeave={this.onAfterLeave.bind(this)}>
           <View show={visible && this.emptyText() !== false}>
             <div ref="popper" className={this.classNames('el-select-dropdown', {
                 'is-multiple': multiple
@@ -908,6 +956,10 @@ Select.childContextTypes = {
   component: PropTypes.any
 };
 
+Select.contextTypes = {
+  form: PropTypes.any
+};
+
 Select.propTypes = {
   value: PropTypes.any,
   size: PropTypes.string,
@@ -920,7 +972,10 @@ Select.propTypes = {
   filterMethod: PropTypes.func,
   multiple: PropTypes.bool,
   placeholder: PropTypes.string,
-  onChange: PropTypes.func
+  onChange: PropTypes.func,
+  onVisibleChange: PropTypes.func,
+  onRemoveTag: PropTypes.func,
+  onClear: PropTypes.func
 }
 
 export default ClickOutside(Select);

@@ -7,8 +7,7 @@ import { Component, PropTypes, Transition } from '../../libs';
 type State = {
   error: string,
   valid: boolean,
-  validating: boolean,
-  isRequired: boolean
+  validating: boolean
 };
 
 export default class FormItem extends Component {
@@ -20,9 +19,14 @@ export default class FormItem extends Component {
     this.state = {
       error: '',
       valid: false,
-      validating: false,
-      isRequired: false
+      validating: false
     }
+  }
+
+  getChildContext(): Object {
+    return {
+      form: this
+    };
   }
 
   componentDidMount() {
@@ -32,18 +36,6 @@ export default class FormItem extends Component {
       this.parent().addField(this);
 
       this.initialValue = this.getInitialValue();
-
-      let rules = this.getRules();
-
-      if (rules.length) {
-        rules.every(rule => {
-          if (rule.required) {
-            this.state.isRequired = true;
-
-            return false;
-          }
-        });
-      }
     }
   }
 
@@ -53,6 +45,24 @@ export default class FormItem extends Component {
 
   parent(): Component {
     return this.context.component;
+  }
+
+  isRequired(): boolean {
+    let rules = this.getRules();
+    let isRequired = false;
+
+    if (rules && rules.length) {
+      rules.every(rule => {
+        if (rule.required) {
+          isRequired = true;
+
+          return false;
+        }
+        return true;
+      });
+    }
+
+    return isRequired;
   }
 
   onFieldBlur(): void {
@@ -72,29 +82,33 @@ export default class FormItem extends Component {
   }
 
   validate(trigger: string, cb?: Function): boolean | void {
-    let { validating, valid, error } = this.state;
-
     const rules = this.getFilteredRule(trigger);
 
     if (!rules || rules.length === 0) {
-      cb && cb();
+      if (cb instanceof Function) {
+        cb();
+      }
+
       return true;
     }
 
-    validating = true;
+    this.setState({ validating: true });
 
     const descriptor = { [this.props.prop]: rules };
     const validator = new AsyncValidator(descriptor);
     const model = { [this.props.prop]: this.fieldValue() };
 
     validator.validate(model, { firstFields: true }, errors => {
-      valid = !errors;
-      error = errors ? errors[0].message : '';
-      cb && cb(errors);
-      validating = false;
+      this.setState({
+        error: errors ? errors[0].message : '',
+        validating: false,
+        valid: !errors
+      }, () => {
+        if (cb instanceof Function) {
+          cb(errors);
+        }
+      });
     });
-
-    this.setState({ validating, valid, error });
   }
 
   getInitialValue(): string | void {
@@ -142,7 +156,7 @@ export default class FormItem extends Component {
     });
   }
 
-  labelStyle(): { width?: number } {
+  labelStyle(): { width?: number | string } {
     const ret = {};
 
     if (this.parent().props.labelPosition === 'top') return ret;
@@ -150,13 +164,13 @@ export default class FormItem extends Component {
     const labelWidth = this.props.labelWidth || this.parent().props.labelWidth;
 
     if (labelWidth) {
-      ret.width = Number(labelWidth);
+      ret.width = parseInt(labelWidth);
     }
 
     return ret;
   }
 
-  contentStyle(): { marginLeft?: number } {
+  contentStyle(): { marginLeft?: number | string } {
     const ret = {};
 
     if (this.parent().props.labelPosition === 'top' || this.parent().props.inline) return ret;
@@ -164,7 +178,7 @@ export default class FormItem extends Component {
     const labelWidth = this.props.labelWidth || this.parent().props.labelWidth;
 
     if (labelWidth) {
-      ret.marginLeft = Number(labelWidth);
+      ret.marginLeft = parseInt(labelWidth);
     }
 
     return ret;
@@ -178,14 +192,14 @@ export default class FormItem extends Component {
   }
 
   render(): React.Element<any> {
-    const { error, validating, isRequired } = this.state;
+    const { error, validating } = this.state;
     const { label, required } = this.props;
 
     return (
       <div style={this.style()} className={this.className('el-form-item', {
         'is-error': error !== '',
         'is-validating': validating,
-        'is-required': isRequired || required
+        'is-required': this.isRequired() || required
       })} onBlur={this.onFieldBlur.bind(this)} onChange={this.onFieldChange.bind(this)}>
         {
           label && (
@@ -209,6 +223,10 @@ export default class FormItem extends Component {
 
 FormItem.contextTypes = {
   component: PropTypes.any
+};
+
+FormItem.childContextTypes = {
+  form: PropTypes.any
 };
 
 FormItem.propTypes = {

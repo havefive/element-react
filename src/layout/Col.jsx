@@ -45,13 +45,10 @@ export default class Col extends Component {
       }
     });
 
-    return (
-      <div
-        className={this.className('el-col', classList)}
-        style={this.style(this.getStyle())}>
-        {this.props.children}
-      </div>
-    );
+    return React.createElement(this.props.tag, {
+      className: this.className('el-col', classList),
+      style: this.style(this.getStyle())
+    }, this.props.children);
   }
 }
 
@@ -62,14 +59,16 @@ Col.contextTypes = {
 Col.propTypes = {
   span: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   offset: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  pull: PropTypes.number,
-  push: PropTypes.number,
+  pull: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  push: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   xs: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.object]),
   sm: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.object]),
   md: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.object]),
-  lg: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.object])
+  lg: PropTypes.oneOfType([PropTypes.number, PropTypes.string, PropTypes.object]),
+  tag: PropTypes.string
 }
 
 Col.defaultProps = {
-  span: 24
+  span: 24,
+  tag: 'div'
 }

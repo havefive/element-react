@@ -32,10 +32,21 @@ body {
     position: relative;
 
     h1 {
+      position: relative;
       margin: 0;
       float: left;
       font-size: 32px;
       font-weight: 400;
+
+      &:after {
+        position: absolute;
+        top: -7px;
+        right: -50px;
+        content: 'React';
+        font-size: 13px;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
 
       a {
         color: #fff;
@@ -45,6 +56,7 @@ body {
 
       img {
         vertical-align: sub;
+        pointer-events: none;
       }
     }
 
@@ -182,20 +194,20 @@ body {
   }
 
   pre {
-    background-color: #f9fafc;
-    overflow-x: auto;
+    background-color: transparent;
     padding: 18px 24px;
     line-height: 1.8;
     font-size: 12px;
   }
 
-  >div>table {
+  table.grid {
     border-collapse: collapse;
     width: 100%;
     background-color: #fff;
     color: #5e6d82;
     font-size: 14px;
     margin-bottom: 45px;
+    line-height: 1.5em;
 
     strong {
       font-weight: normal;
@@ -205,13 +217,13 @@ body {
       text-align: left;
       border-top: 1px solid #eaeefb;
       background-color: #EFF2F7;
+      white-space: nowrap;
     }
 
     td, th {
       border-bottom: 1px solid #eaeefb;
       padding: 10px;
       max-width: 250px;
-      word-break: break-word;
     }
 
     th:first-child, td:first-child {
@@ -285,6 +297,7 @@ body {
   }
 
   .source {
+    position: relative;
     padding: 24px;
   }
 
@@ -293,7 +306,6 @@ body {
     overflow: hidden;
     background-color: #f9fafc;
     border-top: solid 1px #eaeefb;
-    transition: all .2s;
   }
 
   .highlight {
@@ -342,14 +354,16 @@ body {
     cursor: pointer;
     transition: .2s;
     position: relative;
+
     i {
       font-size: 12px;
       line-height: 36px;
-      transition: .3s;
+      margin-right: 5px;
     }
+
     span {
-      position: absolute;
-      transform: translateX(10px);
+      display: inline-block;
+      transform: translateX(40px);
       font-size: 14px;
       line-height: 36px;
       transition: .3s;
@@ -363,13 +377,9 @@ body {
   }
 
   .demo-block-control:hover {
-    i {
-      transform: translateX(-40px);
-    }
     span {
-      display: inline-block;
       opacity: 1;
-      transform: translateX(-30px);
+      transform: translateX(0);
     }
   }
 }

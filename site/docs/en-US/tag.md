@@ -97,8 +97,8 @@ onChange(value) {
   this.setState({ inputValue: value });
 }
 
-handleClose(tag) {
-  this.state.dynamicTags.splice(this.state.dynamicTags.indexOf(tag), 1);
+handleClose(index) {
+  this.state.dynamicTags.splice(index, 1);
   this.forceUpdate();
 }
 
@@ -128,10 +128,10 @@ render() {
         this.state.dynamicTags.map((tag, index) => {
           return (
             <Tag
-              key={index}
+              key={Math.random()}
               closable={true}
               closeTransition={false}
-              onClose={this.handleClose.bind(this, tag)}>{tag}</Tag>
+              onClose={this.handleClose.bind(this, index)}>{tag}</Tag>
           )
         })
       }
@@ -161,7 +161,7 @@ render() {
 | closable | whether Tab can be removed | boolean | — | false |
 | closeTransition |  whether the removal animation is disabled  | boolean | — | false |
 | hit | whether Tag has a highlighted border | boolean | — | false |
-
+| color | background color of the tag | string | — | — |
 
 ### Events
 | Event Name | Description | Parameters |

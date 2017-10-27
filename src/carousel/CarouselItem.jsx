@@ -10,10 +10,9 @@ type State = {
   scale: number,
   active: boolean,
   ready: boolean,
-  inStage: boolean
+  inStage: boolean,
+  animating: boolean
 };
-
-const CARD_SCALE = 0.83;
 
 export default class CarouselItem extends Component {
   state: State;
@@ -27,7 +26,8 @@ export default class CarouselItem extends Component {
       scale: 1,
       active: false,
       ready: false,
-      inStage: false
+      inStage: false,
+      animating: false
     };
   }
 
@@ -37,6 +37,20 @@ export default class CarouselItem extends Component {
 
   componentWillUnmount(): void {
     this.parent().removeItem(this);
+  }
+
+  get isFlat(): boolean {
+    return this.parent().props.type === 'flatcard';
+  }
+
+  get CARD_SCALE(): number {
+     return this.isFlat ? 1 : 0.83;
+  }
+
+  get calculateWidth(): ?string {
+    if (this.isFlat) {
+      return parseInt(100 / 3) + '%';
+    }
   }
 
   processIndex(index: number, activeIndex: number, length: number): number {
@@ -54,29 +68,34 @@ export default class CarouselItem extends Component {
   }
 
   calculateTranslate(index: number, activeIndex: number, parentWidth: number): number {
+    const denominator = this.isFlat ? 3 : 4;
     if (this.state.inStage) {
-      return parentWidth * ((2 - CARD_SCALE) * (index - activeIndex) + 1) / 4;
+      return parentWidth * ((2 - this.CARD_SCALE) * (index - activeIndex) + 1) / denominator;
     } else if (index < activeIndex) {
-      return -(1 + CARD_SCALE) * parentWidth / 4;
+      return -(1 + this.CARD_SCALE) * parentWidth / denominator;
     } else {
-      return (3 + CARD_SCALE) * parentWidth / 4;
+      return (denominator - 1 + this.CARD_SCALE) * parentWidth / denominator;
     }
   }
 
-  translateItem(index: number, activeIndex: number) {
+  translateItem(index: number, activeIndex: number, oldIndex: number) {
     const parent: any = ReactDOM.findDOMNode(this.parent());
     const parentWidth = parent.offsetWidth;
     const length = this.parent().state.items.length;
+
+    if (!this.parent().iscard && oldIndex !== undefined) {
+      this.state.animating = index === activeIndex || index === oldIndex;
+    }
 
     if (index !== activeIndex && length > 2) {
       index = this.processIndex(index, activeIndex, length);
     }
 
-    if (this.parent().props.type === 'card') {
+    if (this.parent().iscard) {
       this.state.inStage = Math.round(Math.abs(index - activeIndex)) <= 1;
       this.state.active = index === activeIndex;
       this.state.translate = this.calculateTranslate(index, activeIndex, parentWidth);
-      this.state.scale = this.state.active ? 1 : CARD_SCALE;
+      this.state.scale = this.state.active ? 1 : this.CARD_SCALE;
     } else {
       this.state.active = index === activeIndex;
       this.state.translate = parentWidth * (index - activeIndex);
@@ -88,7 +107,7 @@ export default class CarouselItem extends Component {
   }
 
   handleItemClick() {
-    if (this.parent().props.type === 'card') {
+    if (this.parent().iscard) {
       const index = this.parent().state.items.indexOf(this);
       this.parent().setActiveItem(index);
     }
@@ -99,16 +118,17 @@ export default class CarouselItem extends Component {
   }
 
   render() {
-    const { hover, translate, scale, active, ready, inStage } = this.state;
+    const { hover, translate, scale, active, ready, inStage, animating } = this.state;
 
     return (
       <View show={ready}>
         <div
           className={this.className('el-carousel__item', {
             'is-active': active,
-            'el-carousel__item--card': this.parent().props.type === 'card',
+            'el-carousel__item--card': this.parent().iscard,
             'is-in-stage': inStage,
-            'is-hover': hover
+            'is-hover': hover,
+            'is-animating': animating
           })}
           onClick={this.handleItemClick.bind(this)}
           style={{
@@ -117,7 +137,7 @@ export default class CarouselItem extends Component {
             transform: `translateX(${ translate }px) scale(${ scale })`
           }}>
           {
-            this.parent().props.type === 'card' && (
+            this.parent().iscard && (
               <View show={!active}>
                 <div className="el-carousel__mask" />
               </View>

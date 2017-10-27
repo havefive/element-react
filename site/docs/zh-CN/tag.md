@@ -97,8 +97,8 @@ onChange(value) {
   this.setState({ inputValue: value });
 }
 
-handleClose(tag) {
-  this.state.dynamicTags.splice(this.state.dynamicTags.indexOf(tag), 1);
+handleClose(index) {
+  this.state.dynamicTags.splice(index, 1);
   this.forceUpdate();
 }
 
@@ -128,10 +128,10 @@ render() {
         this.state.dynamicTags.map((tag, index) => {
           return (
             <Tag
-              key={index}
+              key={Math.random()}
               closable={true}
               closeTransition={false}
-              onClose={this.handleClose.bind(this, tag)}>{tag}</Tag>
+              onClose={this.handleClose.bind(this, index)}>{tag}</Tag>
           )
         })
       }
@@ -161,7 +161,7 @@ render() {
 | closable | 是否可关闭 | boolean | — | false |
 | closeTransition | 是否禁用关闭时的渐变动画 | boolean | — | false |
 | hit | 是否有边框描边 | boolean | — | false |
-
+| color | 背景色 | string | — | — |
 
 ### Events
 | 事件名称 | 说明 | 回调参数 |

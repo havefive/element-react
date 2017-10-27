@@ -16,7 +16,7 @@ export default class DatePicker extends BasePicker {
       {},
       BasePicker.propTypes,
       pick(DatePanel.propTypes,
-        ['value', 'showTime', 'shortcuts', 'selectionMode', 'disabledDate', 'showWeekNumber']))
+        ['value', 'showTime', 'shortcuts', 'selectionMode', 'disabledDate', 'showWeekNumber', 'firstDayOfWeek']))
   }
 
   static get defaultProps() {
@@ -43,7 +43,7 @@ export default class DatePicker extends BasePicker {
         {...props}
         value={state.value}
         onPick={this.onPicked.bind(this)}
-        />
+      />
     )
   }
 }

@@ -1421,6 +1421,7 @@ render() {
 | debounce | debounce delay when typing filter keyword, in millisecond | number | — | 300 |
 | changeOnSelect | whether selecting an option of any level is permitted | boolean | — | false |
 | size  | size of Input | string | large / small / mini | — |
+| beforeFilter | hook function before filtering with the value to be filtered as its parameter. If `false` is returned or a `Promise` is returned and then is rejected, filtering will be aborted | function(value) | — | — |
 
 ### props
 | Attribute | Description | Type | Accepted Values | Default |

@@ -1,330 +1,264 @@
 // @flow
-import React from 'react';
-import ReactDOM from 'react-dom';
+import * as React from 'react';
 import { Component, PropTypes } from '../../libs';
-import { enhanceColumns, calculateBodyWidth, calculateFixedWidth, scheduleLayout } from './mixins';
-import { getScrollBarWidth } from './utils';
 import TableHeader from './TableHeader';
 import TableBody from './TableBody';
+import TableFooter from './TableFooter';
 
-import type { Column, TableProps, TableState, DefaultTableProps } from './Types';
+import type {
+  TableProps,
+  TableState,
+} from './Types';
 
-let tableIdSeed = 1;
+// let tableIdSeed = 1;
 
-export default class Table extends Component{
-  props: TableProps;
-  state: TableState;
-  static defaultProps: DefaultTableProps;
+export default class Table extends Component<TableProps, TableState> {
+  static contextTypes = {
+    store: PropTypes.any,
+    layout: PropTypes.any,
+  };
 
-  constructor(props:Object, context:Object){
-    super(props, context);
-    this.tableId = tableIdSeed++;
+  static childContextTypes = {
+    table: PropTypes.any
+  };
 
-    const { columns, data } = this.props;
-    const enhCols = enhanceColumns(columns, this.tableId);
+  constructor(props: TableProps) {
+    super(props);
+    this.state = {};
 
-    this.state = {
-      columns: columns,//用户原始columns配置
-      _columns: enhCols.columns,//补充后的列配置
-      fixedLeftColumns: enhCols.fixedLeftColumns,
-      fixedRightColumns: enhCols.fixedRightColumns,
-      data: data,
-      sortList: null,
-      filterList: null,
+    // this.tableId = `el-table_${tableIdSeed++}_`;
+    // this.tableId = tableIdSeed++;
 
-      bodyWidth: '',
-      bodyHeight: '',
-      headerHeight: '',
-      realTableHeaderHeight: '',
-      realTableHeight: '',
-      realTableWidth: '',
-      resizeProxyVisible: false,
-
-      scrollY: false,//表格竖Y轴是否有滚动条,
-      scrollX: false
-    }
-  }
-
-  getChildContext(){
-    return {
-      $owerTable: this
-    }
-  }
-
-  componentDidMount(){
-    this.initLayout();
-
-    const des:Object = {
-      get: this._filterContainer.bind(this)
-    };
-    Object.defineProperty(this, 'filterContainer', des);
-  }
-
-  componentWillUnmount(){
-    if (this._filterContainer instanceof HTMLElement) {
-      const body = document.body || document;
-      ReactDOM.unmountComponentAtNode(this.filterContainer);
-      body.removeChild(this.filterContainer);
-    }
-  }
-
-  componentWillReceiveProps(nextProps:Object){
-    if(nextProps.data != this.props.data){
-      this.setState({data: nextProps.data}, ()=>{
-        this.initLayout();
-      });
-    }
-
-    if(nextProps.height != this.props.height){
-      this.initLayout();
-    }
-  }
-
-  _filterContainer(){
-    if(!this._filterCon){
-      this._filterCon = document.createElement('div');
-      this._filterCon.style.cssText = "position:absolute;left:0;top:0";
-      this._filterCon.id = "__filter__" + Math.random(32).toString().slice(2);
-      const body = document.body || document.createElement('body');
-      body.appendChild(this._filterCon);
-    }
-
-    return this._filterCon;
-  }
-
-  initLayout(){
-    const { height, fit } = this.props;
-    const rootComputedStyle = window.getComputedStyle(this.refs.root);
-    const headerComputedStyle = window.getComputedStyle(this.refs.headerWrapper);
-    const thisTableWidth = parseFloat(headerComputedStyle.getPropertyValue('width'));
-    const realTableHeight = parseFloat(rootComputedStyle.getPropertyValue('height'));
-    const bodyWidth = scheduleLayout(this.state._columns, thisTableWidth, 0, fit).bodyWidth;
-    const headerHeight = this.refs.headerWrapper.offsetHeight;
-    const bodyHeight = height ? height - headerHeight : '';
-
-    this.setState({
-      bodyWidth,
-      bodyHeight,
-      headerHeight,
-      realTableHeaderHeight: headerHeight,
-      realTableWidth: thisTableWidth,
-      realTableHeight: this.props.height || realTableHeight || ''
-    }, ()=>{
-      this.adjustScrollState();
+    ['syncScroll'].forEach((fn) => {
+      this[fn] = this[fn].bind(this);
     });
   }
 
-  scheduleLayout(){
-    const { _columns, realTableWidth, scrollY } = this.state;
-
-    const layout = scheduleLayout(_columns, realTableWidth, Number(scrollY), this.props.fit);
-    this.setState({
-      bodyWidth: layout.bodyWidth
-    }, ()=>{
-      this.onScrollBodyWrapper();
-      this.adjustScrollState();
-    });
-  }
-
-  adjustScrollState(){
-    const scrollY = this.refs.mainBody.isScrollY();
-    this.setState({
-      scrollX: this.refs.mainBody.isScrollX(),
-      scrollY: scrollY,
-      bodyWidth: scheduleLayout(this.state._columns, this.state.realTableWidth, scrollY, this.props.fit).bodyWidth
-    });
-  }
-
-  getBodyWrapperStyle(){
-    const { bodyHeight } = this.state;
+  get bodyWrapperHeight(): Object {
+    const { layout, height, maxHeight } = this.props;
     const style = {};
 
-    style.height = bodyHeight;
+    if (height) {
+      style.height = layout.bodyHeight || '';
+    } else if (maxHeight) {
+      if (layout.headerHeight !== null) { // 非首次渲染
+        style.maxHeight = maxHeight - layout.headerHeight - layout.footerHeight
+      }
+    }
+
     return style;
   }
 
-  onScrollBodyWrapper(){
-    const target = arguments[0] ? arguments[0].target : this.refs.bodyWrapper;
-    const headerWrapper = this.refs.headerWrapper;
-    const fixedBodyWrapper = this.refs.fixedBodyWrapper;
-    const rightFixedBodyWrapper = this.refs.rightFixedBodyWrapper;
-
-    if(target instanceof HTMLDivElement){
-      headerWrapper.scrollLeft = target.scrollLeft;
-      fixedBodyWrapper && (fixedBodyWrapper.scrollTop = target.scrollTop);
-      rightFixedBodyWrapper && (rightFixedBodyWrapper.scrollTop = target.scrollTop);
-    }
+  get bodyWidth(): number | '' {
+    const { layout } = this.props;
+    const { bodyWidth, scrollY, gutterWidth } = layout;
+    return bodyWidth ? bodyWidth - (scrollY ? gutterWidth : 0) : '';
   }
 
-  sortBy(sort:number, prop:string, compare:any){
-    const data = this.state.filterList || this.state.data;
-    const sortList = data.slice(0);
+  get fixedHeight(): Object {
+    const { layout } = this.props;
+    return {
+      bottom: layout.scrollX ? layout.gutterWidth - 1 : 0
+    };
+  }
 
-    if(sort === 0){
-      this.setState({sortList: null});
-    }else{
-      const defaultCompare = (a, b)=>{
-        if(sort == 2){ var t = b; b = a; a = t;}
-        return (a[prop] > b[prop] ? 1 : -1);
+  get fixedBodyHeight(): Object {
+    const { layout, ...props } = this.props;
+    const style = {};
+
+    if (props.height) {
+      style.height = layout.fixedBodyHeight || '';
+    } else if (props.maxHeight) {
+      if (layout.headerHeight !== null) {
+        style.maxHeight = props.maxHeight - layout.headerHeight - layout.footerHeight - (layout.scrollX ? layout.gutterWidth : 0);
       }
-      sortList.sort(compare ? compare : defaultCompare);
-      this.setState({sortList});
+    }
+
+    return style;
+  }
+
+  getChildContext(): Object {
+    return {
+      table: this
     }
   }
 
-  filterBy(column:Object, filteCondi:Array<Object>){
-    const data = this.state.sortList || this.state.data;
+  syncScroll() {
+    const { headerWrapper, footerWrapper, bodyWrapper, fixedBodyWrapper, rightFixedBodyWrapper } = this;
+    if (headerWrapper) {
+      headerWrapper.scrollLeft = bodyWrapper.scrollLeft;
+    }
+    if (footerWrapper) {
+      footerWrapper.scrollLeft = bodyWrapper.scrollLeft;
+    }
 
-    const filterList = data.filter((d)=>{
-      const defaultFilterMethod = (c)=>d[column.property] == c.value;
-      return !!filteCondi.filter(column.filterMethod || defaultFilterMethod).length
-    });
+    if (fixedBodyWrapper) {
+      fixedBodyWrapper.scrollTop = bodyWrapper.scrollTop;
+    }
+    if (rightFixedBodyWrapper) {
+      rightFixedBodyWrapper.scrollTop = bodyWrapper.scrollTop;
+    }
+  }
 
-    this.setState({
-      filterList: filteCondi && filteCondi.length ? filterList : data
-    });
+  bindRef(key: string) {
+    return (node: Object) => { this[key] = node; }
   }
 
   render() {
-    let { fit, stripe, border, highlightCurrentRow } = this.props;
-    let {
-      bodyWidth,
-      bodyHeight,
-      _columns,
-      data,
-      fixedLeftColumns,
-      fixedRightColumns,
-      realTableHeight,
-      realTableHeaderHeight,
-      scrollY,
-      scrollX,
-      sortList,
-      filterList
-    } = this.state;
-
-    const rootClassName = this.classNames(
-      'el-table',
-      {
-        'el-table--fit': fit,
-        'el-table--striped': stripe,
-        'el-table--border': border
-      }
-    );
-
-    const scrollYWiddth = scrollX ? getScrollBarWidth() : 0;
-
-    data = filterList || sortList || data;
+    const { store, layout, ...props } = this.props;
+    const { isHidden } = this.state;
 
     return (
       <div
-        ref="root"
-        style={this.style()}
-        className={this.className(rootClassName)}>
+        style={this.style({
+          height: props.height,
+          maxHeight: props.maxHeight,
+        })}
+        className={this.className('el-table', {
+          'el-table--fit': props.fit,
+          'el-table--striped': props.stripe,
+          'el-table--border': props.border,
+          'el-table--hidden': isHidden,
+          'el-table--fluid-height': props.maxHeight,
+          'el-table--enable-row-hover': !store.isComplex,
+          'el-table--enable-row-transition': (store.data || []).length && (store.data || []).length < 100
+        })}
+        ref={this.bindRef('el')}
+      >
+        {props.showHeader && (
+          <div className="el-table__header-wrapper" ref={this.bindRef('headerWrapper')}>
+            <TableHeader
+              {...this.props}
+              style={{ width: layout.bodyWidth || '' }}
+            />
+          </div>
+        )}
         <div
-          ref="headerWrapper"
-          className="el-table__header-wrapper">
-          <TableHeader
-            ref="header"
-            isScrollY={scrollY}
-            style={{width: bodyWidth}}
-            columns={_columns}/>
-        </div>
-
-        <div
-          style={this.getBodyWrapperStyle()}
+          style={this.bodyWrapperHeight}
           className="el-table__body-wrapper"
-          onScroll={(e)=>{this.onScrollBodyWrapper(e)}}
-          ref="bodyWrapper">
+          ref={this.bindRef('bodyWrapper')}
+          onScroll={this.syncScroll}
+        >
           <TableBody
-            ref="mainBody"
-            style={{width: bodyWidth}}
-            rowClassName={this.props.rowClassName}
-            columns={_columns}
-            highlightCurrentRow={highlightCurrentRow}
-            data={data}/>
-        </div>
-        {
-          !!fixedLeftColumns.length && (
+            {...this.props}
+            style={{ width: this.bodyWidth }}
+          />
+          {(!props.data || !props.data.length) && (
             <div
-              className="el-table__fixed"
-              ref="fixedWrapper"
-              style={{width: calculateFixedWidth(fixedLeftColumns), height: realTableHeight ? (realTableHeight - scrollYWiddth) : ''}}>
-              <div className="el-table__fixed-header-wrapper" ref="fixedHeaderWrapper">
+              style={{ width: this.bodyWidth }}
+              className="el-table__empty-block"
+            >
+              <span className="el-table__empty-text">{props.emptyText}</span>
+            </div>
+          )}
+        </div>
+        {props.showSummary && (
+          <div
+            style={{ visibility: props.data && props.data.length ? 'visible' : 'hidden' }}
+            className="el-table__footer-wrapper"
+            ref={this.bindRef('footerWrapper')}
+          >
+            <TableFooter
+              {...this.props}
+              style={{ width: layout.bodyWidth || '' }}
+            />
+          </div>
+        )}
+        {!!store.fixedColumns.length && (
+          <div
+            style={Object.assign({}, this.fixedHeight, {
+              width: layout.fixedWidth || ''
+            })}
+            className="el-table__fixed"
+            ref={this.bindRef('fixedWrapper')}
+          >
+            {props.showHeader && (
+              <div className="el-table__fixed-header-wrapper" ref={this.bindRef('fixedHeaderWrapper')}>
                 <TableHeader
                   fixed="left"
-                  border="border"
-                  columns={_columns}
-                  style={{width: '100%', height: '100%'}}/>
+                  {...this.props}
+                  style={{ width: layout.fixedWidth || '' }}
+                />
               </div>
-              <div
-                className="el-table__fixed-body-wrapper"
-                ref="fixedBodyWrapper"
-                style={{top: realTableHeaderHeight, height: bodyHeight ? (bodyHeight - scrollYWiddth) : ''}}>
-                <TableBody
-                  ref="fixedLeftBody"
+            )}
+            <div
+              style={Object.assign({}, this.fixedBodyHeight, {
+                top: layout.headerHeight || 0
+              })}
+              className="el-table__fixed-body-wrapper"
+              ref={this.bindRef('fixedBodyWrapper')}
+            >
+              <TableBody
+                fixed="left"
+                {...this.props}
+                style={{ width: layout.fixedWidth || '' }}
+              />
+            </div>
+            {props.showSummary && (
+              <div className="el-table__fixed-footer-wrapper" ref={this.bindRef('fixedFooterWrapper')}>
+                <TableFooter
                   fixed="left"
-                  rowClassName={this.props.rowClassName}
-                  columns={_columns}
-                  data={data}
-                  highlightCurrentRow={highlightCurrentRow}
-                  style={{width: bodyWidth}}>
-                </TableBody>
+                  {...this.props}
+                  style={{ width: layout.fixedWidth || '' }}
+                />
               </div>
-            </div>)
-        }
-
-        <div
-          className="el-table__fixed-right"
-          ref="rightFixedWrapper"
-          style={{width: calculateFixedWidth(fixedRightColumns), height: realTableHeight ? (realTableHeight - scrollYWiddth) : '' ,right: scrollY?getScrollBarWidth() : 0}}>
-          <div
-            className="el-table__fixed-header-wrapper"
-            ref="rightFixedHeaderWrapper">
-            <TableHeader
-              fixed="right"
-              border="border"
-              columns={_columns}
-              style={{width: '100%', height: '100%'}}/>
+            )}
           </div>
+        )}
+        {!!store.rightFixedColumns.length && (
           <div
-            className="el-table__fixed-body-wrapper"
-            ref="rightFixedBodyWrapper"
-            style={{top: realTableHeaderHeight, height: bodyHeight? (bodyHeight - scrollYWiddth):''}}>
-            <TableBody
-              ref="fixedRightBody"
-              fixed="right"
-              rowClassName={this.props.rowClassName}
-              columns={_columns}
-              data={data}
-              highlightCurrentRow={highlightCurrentRow}
-              style={{width: bodyWidth}}>
-            </TableBody>
+            className="el-table__fixed-right"
+            ref={this.bindRef('rightFixedWrapper')}
+            style={Object.assign({}, {
+              width: layout.rightFixedWidth || '',
+              right: layout.scrollY ? (props.border ? layout.gutterWidth : (layout.gutterWidth || 1)) : ''
+            }, this.fixedHeight)}
+          >
+            {props.showHeader && (
+              <div className="el-table__fixed-header-wrapper" ref={this.bindRef('rightFixedHeaderWrapper')}>
+                <TableHeader
+                  fixed="right"
+                  {...this.props}
+                  style={{ width: layout.rightFixedWidth || '' }}
+                />
+              </div>
+            )}
+            <div
+              className="el-table__fixed-body-wrapper"
+              ref={this.bindRef('rightFixedBodyWrapper')}
+              style={Object.assign({}, {
+                top: layout.headerHeight
+              }, this.fixedBodyHeight)}
+            >
+              <TableBody
+                fixed="right"
+                {...this.props}
+                style={{ width: layout.rightFixedWidth || '' }}
+              />
+            </div>
+            {props.showSummary && (
+              <div
+                className="el-table__fixed-footer-wrapper"
+                ref={this.bindRef('rightFixedFooterWrapper')}
+                style={{ visibility: props.data && props.data.length ? 'visible' : 'hidden' }}
+              >
+                <TableFooter
+                  fixed="right"
+                  {...this.props}
+                  style={{ width: layout.rightFixedWidth || '' }}
+                />
+              </div>
+            )}
           </div>
-        </div>
-
-        <div
-          style={{display: this.state.resizeProxyVisible?"block":"none"}}
-          className="el-table__column-resize-proxy"
-          ref="resizeProxy">
-        </div>
-
-        <div className="el-table__body-scroller">
-          <div></div>
-        </div>
+        )}
+        {!!store.rightFixedColumns.length && (
+          <div
+            className="el-table__fixed-right-patch"
+            style={{ width: layout.scrollY ? layout.gutterWidth : '0', height: layout.headerHeight }}
+          />
+        )}
+        <div className="el-table__column-resize-proxy" ref={this.bindRef('resizeProxy')} style={{ visibility: 'hidden' }} />
       </div>
     )
   }
 }
-
-Table.childContextTypes = {
-  $owerTable: PropTypes.object
-};
-
-Table.defaultProps = {
-  columns: [],
-  data: [],
-  stripe: false,
-  border: false,
-  fit: true,
-  highlightCurrentRow: false
-};

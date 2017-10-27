@@ -218,37 +218,35 @@ render() {
 
 :::
 
-### Attributes
+### Common Props
+| 参数      | 说明          | 类型      | 可选值                           | 默认值  |
+|---------- |-------------- |---------- |--------------------------------  |-------- |
+| placeholder | - | string | — | — |
+| format | - | string | 年 `yyyy`，月 `MM`，日 `dd`，小时 `HH`，分 `mm`，秒 `ss` | yyyy-MM-dd |
+| align | - | string | left, center, right | left |
+| isShowTrigger | whether to show trigger icon | boolean | - | true |
+| isReadOnly | - | boolean | - | false |
+| isDisabled | - | boolean | - | false |
+| isDisabled | - | boolean | - | false |
+| firstDayOfWeek | first day of week | Number | 0 to 6 | 0 |
+| onFocus | - | (SyntheticEvent)=>() | - | - |
+| onBlur | - | (SyntheticEvent)=>() | - | - |
+
+
+### DatePicker
 | Attribute      | Description          | Type      | Accepted Values       | Default  |
 |---------- |-------------- |---------- |--------------------------------  |-------- |
-| readonly | whether DatePicker is read only | boolean | — | false |
-| disabled | whether DatePicker is disabled | boolean | — | false |
-|size | size of Input | string | large/small/mini | — |
-| editable | whether the input is editable | boolean | — | true |
-| clearable | Whether to show clear button | boolean | — | true |
-| placeholder | placeholder | string | — | — |
-| type | type of the picker | string | year/month/date/datetime/ week/datetimerange/daterange | date |
-| format | format of the picker | string | year `yyyy` month `MM` day `dd`, hour `HH`, minute `mm`, second `ss` | yyyy-MM-dd |
-| align | alignment | left/center/right | left |
-| popperClass | custom class name for DatePicker's dropdown | string | — | — |
-| pickerOptions | additional options, check the table below | object | — | {} |
+| value | - | Date/null | — | - |
+| shortcuts | - | {text: string, onClick: ()=>() }[] | - | - |
+| selectionMode | calendar type  | string, one of ['year', 'month', 'week', 'day'] | - | 'day' |
+| disabledDate | whether to disabled date selection | (Date, selectionMode)=>boolean | - | - |
+| showWeekNumber | whether to show week number | boolean | - | false |
+
+
+### DateRangePanel
+| Attribute      | Description          | Type      | Accepted Values       | Default  |
+|---------- |-------------- |---------- |--------------------------------  |-------- |
+| value | - | Date[]/null | — | - |
+| shortcuts | - | {text: string, onClick: ()=>() }[] | - | - |
+| showWeekNumber | whether to show week number | boolean | - | false |
 | rangeSeparator | range separator | string | - | ' - ' |
-
-### Picker Options
-| Attribute      | Description          | Type      | Accepted Values       | Default  |
-|---------- |-------------- |---------- |--------------------------------  |-------- |
-| shortcuts | a { text, onClick } object array to set shortcut options, check the table below | object[] | — | — |
-| disabledDate | a function determining if a date is disabled with that date as its parameter. Should return a Boolean | function | — | — |
-| firstDayOfWeek | first day of week | Number | 1 to 7 | 7 |
-
-### shortcuts
-| Attribute      | Description          | Type      | Accepted Values       | Default  |
-|---------- |-------------- |---------- |--------------------------------  |-------- |
-| text | title of the shortcut | string | — | — |
-| onClick | callback function, triggers when the shortcut is clicked, with the `vm` as its parameter. You can change the picker value by emitting the `pick` event. Example: `vm.$emit('pick', new Date())`| function | — | — |
-
-
-### Events
-| Event Name | Description | Parameters |
-|---------|--------|---------|
-| onChange | triggers when input value changes | formatted value |

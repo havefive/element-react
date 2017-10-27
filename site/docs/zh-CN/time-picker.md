@@ -12,7 +12,7 @@ constructor(props) {
   super(props)
 
   this.state = {
-    value: new Date(2016, 9, 10, 14, 30),
+    value: new Date(2016, 9, 10, 8, 30),
   }
 }
 
@@ -156,13 +156,12 @@ render() {
 |---------- |-------------- |---------- |--------------------------------  |-------- |
 | align | 对齐方式 | string | left, center, right | left |
 | placeholder | 占位内容 | string | — | — |
-| format | 时间格式化(TimePicker) | string | 小时：`HH`，分：`mm`，秒：`ss` | 'HH:mm:ss' |
 | isShowTrigger | 是否显示图标 | bool | - | - |
 | isReadOnly | 只读 | boolean | — | false |
 | isDisabled | 是否禁用 | boolean | — | false |
-| onFocus | onFocus | func:(TimeSelectReactComponent)=>{} | — | - |
-| onBlur | onBlur | func:(TimeSelectReactComponent)=>{} | — | - |
-| onChange | onChange | func:(value)=>{} | — | - |
+| onFocus | onFocus | func:(TimeSelectReactComponent)=>() | — | - |
+| onBlur | onBlur | func:(TimeSelectReactComponent)=>() | — | - |
+| onChange | onChange | func:(value)=>() | — | - |
 
 ### TimeSelect
 | 参数      | 说明          | 类型      | 可选值                           | 默认值  |
@@ -186,3 +185,4 @@ render() {
 |---------- |-------------- |---------- |--------------------------------  |-------- |
 | value | 值 | date[]/null | — | - |
 | selectableRange | 可选时间段，例如<br>`'18:30:00 - 20:30:00'`<br>或者传入数组<br>`['09:30:00 - 12:00:00', '14:30:00 - 18:30:00']` | string/string[] | — | — |
+| rangeSeparator | 选择范围时的分隔符 | string | - | ' - ' |

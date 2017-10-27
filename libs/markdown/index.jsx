@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import marked from 'marked';
+import prism from 'prismjs';
 
 import Canvas from './canvas';
 
@@ -9,6 +10,11 @@ export default class Markdown extends React.Component {
     super(props);
 
     this.components = new Map;
+
+    this.renderer = new marked.Renderer();
+    this.renderer.table = (header, body) => {
+      return `<table class="grid"><thead>${header}</thead><tbody>${body}</tbody></table>`;
+    };
   }
 
   componentDidMount() {
@@ -24,10 +30,10 @@ export default class Markdown extends React.Component {
       const div = document.getElementById(id);
 
       if (div instanceof HTMLElement) {
-        ReactDOM.unmountComponentAtNode(div);
         ReactDOM.render(component, div);
       }
     }
+    prism.highlightAll();
   }
 
   render() {
@@ -44,7 +50,7 @@ export default class Markdown extends React.Component {
         }, this.props), p1));
 
         return `<div id=${id}></div>`;
-      }));
+      }), { renderer: this.renderer });
 
       return (
         <div dangerouslySetInnerHTML={{

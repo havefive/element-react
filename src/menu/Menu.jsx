@@ -38,7 +38,7 @@ export default class Menu extends Component {
   }
 
   componentWillReceiveProps(props: Object) {
-    if (props.defaultActive != this.props.defaultActive) {
+    if (props.defaultActive != this.props.defaultActive || props.defaultActive != this.state.activeIndex) {
       this.defaultActiveChanged(props.defaultActive);
     }
 
@@ -75,7 +75,7 @@ export default class Menu extends Component {
     let isOpened = this.state.openedMenus.indexOf(index) !== -1;
 
     if (isOpened) {
-      this.closeMenu(index, indexPath);
+      this.closeMenu(index);
 
       if (this.props.onClose) {
         this.props.onClose(index, indexPath);
@@ -169,7 +169,7 @@ Menu.childContextTypes = {
 Menu.propTypes = {
   mode: PropTypes.string,
   defaultActive: PropTypes.string,
-  defaultOpeneds: PropTypes.array,
+  defaultOpeneds: PropTypes.arrayOf(PropTypes.any),
   theme: PropTypes.string,
   uniqueOpened: PropTypes.bool,
   menuTrigger: PropTypes.string,

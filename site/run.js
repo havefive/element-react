@@ -1,3 +1,5 @@
+/* eslint import/no-extraneous-dependencies: ["off"] */
+
 const path = require('path');
 const webpack = require('webpack');
 const WebpackDevServer = require('webpack-dev-server');
@@ -56,7 +58,8 @@ new WebpackDevServer(webpack({
 }), {
   publicPath: '/',
   hot: true,
-  historyApiFallback: true
+  historyApiFallback: true,
+  stats: { colors: true }
 }).listen(3000, 'localhost', error => {
   if (error) {
     throw error;

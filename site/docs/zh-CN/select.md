@@ -454,6 +454,9 @@ render() {
 | 事件名称 | 说明 | 回调参数 |
 |---------|---------|---------|
 | onChange | 选中值发生变化时触发 | 目前的选中值 |
+| onVisibleChange | 下拉框出现/隐藏时触发 | 出现则为 true，隐藏则为 false |
+| onRemoveTag | 多选模式下移除tag时触发 | 移除的tag值 |
+| onClear | 可清空的单选模式下用户点击清空按钮时触发 | - |
 
 ### Option Group Attributes
 | 参数      | 说明          | 类型      | 可选值                           | 默认值  |
